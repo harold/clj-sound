@@ -7,7 +7,7 @@
         the-stream (AudioSystem/getAudioInputStream the-file)
         the-source-line (AudioSystem/getSourceDataLine (.getFormat the-stream))
         the-buffer-size (.getBufferSize the-source-line)
-        the-buffer (into-array Byte/TYPE (take the-buffer-size (repeat (byte 0))))]
+        the-buffer (make-array Byte/TYPE the-buffer-size)]
     (doto the-source-line (.open) (.start))
     (loop [num-read (.read the-stream the-buffer 0 the-buffer-size)]
       (loop [offset 0]
