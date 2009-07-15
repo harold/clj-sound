@@ -1,6 +1,6 @@
 (ns wav-render
   (:import [javax.sound.sampled AudioSystem]
-           [java.io File DataInputStream]
+           [java.io File]
            [java.awt Color Graphics Dimension]
            [java.awt.image BufferedImage]
            [javax.swing JPanel JFrame]))
@@ -8,35 +8,39 @@
 (def *width* 800)
 (def *height* 200)
 
-(defn get-values [in-path]
-  (let [the-file (File. in-path)
-        the-stream (AudioSystem/getAudioInputStream the-file)
-        the-stream-length (* 2 (.getFrameLength the-stream))
-        the-skip-factor (/ the-stream-length *width*)
+(defn get-audio-input-stream [in-path]
+  (AudioSystem/getAudioInputStream (File. in-path)))
+
+(defn get-values [in-stream desired-count]
+  (let [the-stream-length (* 2 (.getFrameLength in-stream))
+        the-skip-factor (/ the-stream-length desired-count)
         the-buffer (make-array Byte/TYPE 2)
-        the-return (make-array Short/TYPE *width*)]
-    (doseq [index (range *width*)]
-      (.read the-stream the-buffer 0 2)
-      (.skip the-stream the-skip-factor)
+        the-return (make-array Short/TYPE desired-count)]
+    (doseq [index (range desired-count)]
+      (.read in-stream the-buffer 0 2)
+      (.skip in-stream the-skip-factor)
       (let [a (aget the-buffer 0)
-            b (aget the-buffer 1)]
+            b (aget the-buffer 1)] ;; There's an endianness bug here
         (aset-short the-return index (+ (bit-shift-left b 8) a))))
     the-return))
 
-(defn render [g]
-  (let [img (new BufferedImage *width* *height* BufferedImage/TYPE_INT_ARGB)
-        bg (.getGraphics img)
-        the-values (get-values "farm.wav")]
-    (doto bg
+(defn render-wav [in-values io-image]
+  (let [the-graphics (.getGraphics io-image)
+        w (.getWidth io-image)
+        h (.getHeight io-image)]
+    (doto the-graphics
       (.setColor Color/white)
-      (.fillRect 0 0 (.getWidth img) (.getHeight img))
+      (.fillRect 0 0 w h)
       (.setColor Color/black))
-    (doseq [x (range *width*)]
-      (let [v (aget the-values x)]
-        (.drawLine bg x (/ *height* 2)
-                      x (+ (/ *height* 2) (/ (* v *height*) 32768)))))
+    (doseq [x (range w)]
+      (let [v (aget in-values x)]
+        (.drawLine the-graphics x (/ h 2) x (+ (/ h 2) (/ (* v h) 32768)))))))
+
+(defn render [g]
+  (let [img (new BufferedImage *width* *height* BufferedImage/TYPE_INT_ARGB)]
+    (render-wav (get-values (get-audio-input-stream "farm.wav") *width*) img)
     (.drawImage g img 0 0 nil)
-    (.dispose bg)))
+    (.dispose (.getGraphics img))))
 
 (def panel (doto (proxy [JPanel] [] (paint [g] (render g)))
              (.setPreferredSize (new Dimension *width* *height*))))
