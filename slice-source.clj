@@ -8,7 +8,7 @@
 (defn get-transfer-handler [component-map]
   (proxy [TransferHandler] []
     (canImport [a] true)
-    (importData [a] 
+    (importData [a]
                 (let [t (.getTransferable a)
                       f (first (.getTransferDataFlavors t))
                       o (first (.getTransferData t f))]
@@ -44,8 +44,10 @@
       (let [v (aget in-values x)]
         (.drawLine the-graphics x (/ h 2) x (+ (/ h 2) (/ (* v h) 32768)))))))
 
-(defn render [g w h component-map]
-  (let [img (new BufferedImage w h BufferedImage/TYPE_INT_ARGB)
+(defn render [g component-map]
+  (let [w (.getWidth (:panel @component-map))
+        h (.getHeight (:panel @component-map))
+        img (new BufferedImage w h BufferedImage/TYPE_INT_ARGB)
         values (get-values (get-audio-input-stream (:file @component-map)) w)]
     (render-wav values img)
     (.drawImage g img 0 0 nil)
@@ -53,9 +55,8 @@
 
 (defn new-slice-source [w h]
   (let [component-map (ref {})
-        the-return (proxy [JPanel] [] (paint [g] (render g w h component-map)))]
-    (dosync (alter component-map
-                   assoc :file (File. "farm.wav") :panel the-return))
+        the-return (proxy [JPanel] [] (paint [g] (render g component-map)))]
+    (dosync (alter component-map assoc :file (File. "farm.wav") :panel the-return))
     (doto the-return
       (.setPreferredSize (Dimension. w h))
       (.setTransferHandler (get-transfer-handler component-map)))))
