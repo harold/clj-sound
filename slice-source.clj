@@ -31,8 +31,11 @@
         (aset-short out-values index (+ (bit-shift-left b 8) a))))
     out-values))
 
-(defn render [g w h component-map]
-  (let [values (get-values (get-audio-input-stream (:file @component-map)) w)]
+(defn render [g component-map]
+  (let [panel (:panel @component-map)
+        w (.getWidth panel)
+        h (.getHeight panel)
+        values (get-values (get-audio-input-stream (:file @component-map)) w)]
     (doto g
       (.setColor Color/white)
       (.fillRect 0 0 w h)
@@ -43,7 +46,7 @@
 
 (defn new-slice-source [w h]
   (let [component-map (ref {})
-        the-panel (proxy [JPanel] [] (paint [g] (render g w h component-map)))]
+        the-panel (proxy [JPanel] [] (paint [g] (render g component-map)))]
     (dosync (alter component-map assoc :file (File. "farm.wav") :panel the-panel))
     (doto the-panel
       (.setPreferredSize (Dimension. w h))
